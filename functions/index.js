@@ -1,6 +1,7 @@
 const functions = require("firebase-functions");
 const got = require('got');
 const dotenv = require('dotenv');
+const language = require('@google-cloud/language');
 dotenv.config();
 
 // Create and Deploy Your First Cloud Functions
@@ -79,29 +80,68 @@ exports.explain = functions.https.onRequest(async (request, response) => {
     // in your application to provide OpenAI as prompt text.
     
     (async () => {
-    const url = 'https://api.openai.com/v1/completions';
-    const params = {
-        "model": "text-davinci-002",
-        'prompt': text,
-        'max_tokens': 1500,
-        'temperature': 0.7,
-        'frequency_penalty': 0,
-        'presence_penalty': 0,
-        'top_p': 1
-    };
+        const url = 'https://api.openai.com/v1/completions';
+        const params = {
+            "model": "text-davinci-002",
+            'prompt': text,
+            'max_tokens': 1500,
+            'temperature': 0.7,
+            'frequency_penalty': 0,
+            'presence_penalty': 0,
+            'top_p': 1
+        };
+        
+        const headers = {
+            'Authorization': `Bearer ${process.env.KEY}`,
+        };
+
+        try {
+            const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
+            output = responseFromGPT.choices[0].text;
+            response.send(request.body.prompt+output)
+        } catch (err) {
+            response.send(err);
+        }
+        })();
+
+
+});
+
+
+
+exports.quickstart = functions.https.onRequest(async (request, response) => {
     
-    const headers = {
-        'Authorization': `Bearer ${process.env.KEY}`,
+    // Creates a client
+    const client = new language.LanguageServiceClient(
+        {
+            projectID:"ai-hacks-gatormate",
+            keyFilename:"creds.json"
+        }
+    );
+
+    /**
+     * TODO(developer): Uncomment the following line to run this code.
+     */
+    const text = 'Your text to analyze, e.g. Hello, world!';
+
+    // Prepares a document, representing the provided text
+    const document = {
+        content: text,
+        type: 'PLAIN_TEXT',
     };
 
-    try {
-        const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
-        output = responseFromGPT.choices[0].text;
-        response.send(request.body.prompt+output)
-    } catch (err) {
-        response.send(err);
-    }
-    })();
+    // Detects the sentiment of the document
+    const [result] = await client.analyzeSentiment({document});
 
+    const sentiment = result.documentSentiment;
+    console.log('Document sentiment:');
+    console.log(`  Score: ${sentiment.score}`);
+    console.log(`  Magnitude: ${sentiment.magnitude}`);
 
+    const sentences = result.sentences;
+    sentences.forEach(sentence => {
+    console.log(`Sentence: ${sentence.text.content}`);
+    console.log(`  Score: ${sentence.sentiment.score}`);
+    console.log(`  Magnitude: ${sentence.sentiment.magnitude}`);
+    });
 });
