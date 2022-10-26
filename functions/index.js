@@ -22,16 +22,16 @@ exports.chatAi = functions.https.onRequest(async (request, response) => {
         'frequency_penalty': 0,
         'presence_penalty': 0.6,
         'top_p': 1,
-        'stop': [" Human:", "GatorMate:"]
+        'stop': [" Human:", " AI:"]
     };
+    
     const headers = {
-        'Authorization': `Bearer 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`,
+        'Authorization': `Bearer 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`,
     };
 
     try {
         const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
         output = responseFromGPT.choices[0].text;
-        console.log(responseFromGPT)
         response.send(output)
     } catch (err) {
         response.send(err);
