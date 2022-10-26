@@ -1,5 +1,7 @@
 const functions = require("firebase-functions");
 const got = require('got');
+const dotenv = require('dotenv');
+dotenv.config();
 
 // Create and Deploy Your First Cloud Functions
 // https://firebase.google.com/docs/functions/write-firebase-functions
@@ -26,7 +28,7 @@ exports.chatAi = functions.https.onRequest(async (request, response) => {
     };
     
     const headers = {
-        'Authorization': `Bearer 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`,
+        'Authorization': `Bearer ${process.env.KEY}`,
     };
 
     try {
