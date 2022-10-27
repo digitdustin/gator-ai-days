@@ -114,7 +114,7 @@ const SearchAnswers = ({
               //determine hsl value, determine saturation by index
               const saturation = entity.salience * 100; // 100, 90, 80, 70, 60, 50, 40, 30, 20, 10
               return (
-                <a href={entity.metadata.wikipedia_url}>
+                <a key={i} href={entity.metadata.wikipedia_url}>
                   <div
                     key={i}
                     style={{

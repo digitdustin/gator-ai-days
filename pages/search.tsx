@@ -28,7 +28,7 @@ export interface Message {
   type: "user" | "gator";
 }
 
-const search = () => {
+const Search = () => {
   const [showTypingAnimation, setShowTypingAnimation] = useState<boolean>(true);
   const [showResults, setShowResults] = useState<boolean>(false);
   const [chatHeight, setChatHeight] = useState<number>(0);
@@ -482,4 +482,4 @@ const search = () => {
   );
 };
 
-export default search;
+export default Search;
