@@ -2,107 +2,133 @@ const functions = require("firebase-functions");
 const got = require('got');
 const dotenv = require('dotenv');
 const language = require('@google-cloud/language');
+const cors = require('cors')({origin: true});
 dotenv.config();
 
 // Create and Deploy Your First Cloud Functions
 // https://firebase.google.com/docs/functions/write-firebase-functions
 
 exports.chatAi = functions.https.onRequest(async (request, response) => {
-    var text=request.body.prompt;
-    
-    var level=""
-    if (index==0){
-        level="a child"
-    }
-    if (index==1){
-        level="a young adult"
-    }
-    if (index==2){
-        level="a high-schooler"
-    }
-    if (index==2){
-        level="an adult"
-    }
-
-    // This is just an example, but could be something you keep track of
-    // in your application to provide OpenAI as prompt text.
-    
-    (async () => {
-    const url = 'https://api.openai.com/v1/completions';
-    const params = {
-        "model": "text-davinci-002",
-        'prompt': text,
-        'max_tokens': 150,
-        'temperature': 0.9,
-        'frequency_penalty': 0,
-        'presence_penalty': 0.6,
-        'top_p': 1,
-        'stop': [" Human:", " AI:"]
-    };
-    
-    const headers = {
-        'Authorization': `Bearer ${process.env.KEY}`,
-    };
-
-    try {
-        const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
-        output = responseFromGPT.choices[0].text;
-        response.send(output)
-    } catch (err) {
-        response.send(err);
-    }
-    })();
+    cors(request, response, async() => {
+       
+        console.log(request.body)
+        console.log(request.body.prompt)
+        var index=request.body.index
+        var level=""
+        if (index==0){
+            level="a child"
+        }
+        if (index==1){
+            level="a young adult"
+        }
+        if (index==2){
+            level="a high-schooler"
+        }
+        if (index==2){
+            level="an adult"
+        }
 
 
-});
+        var starting=`The following is a conversation with an AI assistant. The assistant is helpful, clever, very friendly, and for ${level}.\n\nHuman: Hello, who are you?\nAI: I am an AI created by OpenAI. How can I help you today?\nHuman: `
+        var text=request.body.prompt;
+        
+        
 
 
-exports.explain = functions.https.onRequest(async (request, response) => {
-    var index=request.body.index
-    var level=""
-    if (index==0){
-        level="a child"
-    }
-    if (index==1){
-        level="a young adult"
-    }
-    if (index==2){
-        level="a high-schooler"
-    }
-    if (index==2){
-        level="an adult"
-    }
-    var text="Answer this question in 2 paragraphs format for "+ level + ":\n\n"+request.body.prompt;
-    
-    
-
-    // This is just an example, but could be something you keep track of
-    // in your application to provide OpenAI as prompt text.
-    
-    (async () => {
+        // This is just an example, but could be something you keep track of
+        // in your application to provide OpenAI as prompt text.
+        
+        (async () => {
         const url = 'https://api.openai.com/v1/completions';
         const params = {
             "model": "text-davinci-002",
-            'prompt': text,
-            'max_tokens': 1500,
-            'temperature': 0.7,
+            'prompt': starting+text,
+            'max_tokens': 150,
+            'temperature': 0.9,
             'frequency_penalty': 0,
-            'presence_penalty': 0,
-            'top_p': 1
+            'presence_penalty': 0.6,
+            'top_p': 1,
+            'stop': [" Human:", " AI:"]
         };
         
         const headers = {
             'Authorization': `Bearer ${process.env.KEY}`,
         };
+        response.set('Access-Control-Allow-Origin', '*');
+        response.set('Access-Control-Allow-Headers', '*');
+        response.set('Content-Type', 'application/json');
 
         try {
             const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
             output = responseFromGPT.choices[0].text;
-            response.send(request.body.prompt+output)
+            response.send(output)
         } catch (err) {
             response.send(err);
         }
         })();
+
+
+
+      });
+    
+});
+
+
+exports.explain = functions.https.onRequest(async (request, response) => {
+
+    cors(request, response, async() => {
+    
+        console.log(request.body)
+        console.log(request.body.prompt)
+        var index=request.body.index
+        var level=""
+        if (index==0){
+            level="a child"
+        }
+        if (index==1){
+            level="a young adult"
+        }
+        if (index==2){
+            level="a high-schooler"
+        }
+        if (index==2){
+            level="an adult"
+        }
+        var text="Answer this question in 2 paragraphs format for "+ level + ":\n\n"+request.body.prompt;
+        
+        
+
+        // This is just an example, but could be something you keep track of
+        // in your application to provide OpenAI as prompt text.
+        
+        (async () => {
+            const url = 'https://api.openai.com/v1/completions';
+            const params = {
+                "model": "text-davinci-002",
+                'prompt': text,
+                'max_tokens': 1500,
+                'temperature': 0.7,
+                'frequency_penalty': 0,
+                'presence_penalty': 0,
+                'top_p': 1
+            };
+            
+            const headers = {
+                'Authorization': `Bearer ${process.env.KEY}`,
+            };
+
+            response.set('Access-Control-Allow-Origin', '*');
+            response.set('Access-Control-Allow-Headers', '*');
+            response.set('Content-Type', 'application/json');
+            try {
+                const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
+                output = responseFromGPT.choices[0].text;
+                response.send(request.body.prompt+output)
+            } catch (err) {
+                response.send(err);
+            }
+            })();
+        });
 
 
 });
@@ -110,6 +136,7 @@ exports.explain = functions.https.onRequest(async (request, response) => {
 
 
 exports.getEntities = functions.https.onRequest(async (request, response) => {
+    cors(request, response, async() => {
     var text = request.body.prompt;
     console.log(`TEXT: ${text}`)
     
@@ -145,4 +172,5 @@ exports.getEntities = functions.https.onRequest(async (request, response) => {
     //     console.log(`Wiki URL: ${wiki}`)
     // })
     response.send(entities);
+    });
 });
