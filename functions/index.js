@@ -5,38 +5,28 @@ const language = require('@google-cloud/language');
 const cors = require('cors')({origin: true});
 dotenv.config();
 
-// Create and Deploy Your First Cloud Functions
-// https://firebase.google.com/docs/functions/write-firebase-functions
-
 exports.chatAi = functions.https.onRequest(async (request, response) => {
     cors(request, response, async() => {
        
         console.log(request.body)
         console.log(request.body.prompt)
         var index=request.body.index
-        var level=""
-        if (index==0){
-            level="a child"
+        var level = ""
+        if (index == 0){
+            level = "a child"
         }
-        if (index==1){
-            level="a young adult"
+        if (index == 1){
+            level = "a young adult"
         }
-        if (index==2){
-            level="a high-schooler"
+        if (index == 2){
+            level = "a high-schooler"
         }
-        if (index==2){
-            level="an adult"
+        if (index == 2){
+            level = "an adult"
         }
 
-
-        var starting=`The following is a conversation with an AI assistant. The assistant is helpful, clever, very friendly, and for ${level}.\n\nHuman: Hello, who are you?\nAI: I am an AI created by OpenAI. How can I help you today?\nHuman: `
-        var text=request.body.prompt;
-        
-        
-
-
-        // This is just an example, but could be something you keep track of
-        // in your application to provide OpenAI as prompt text.
+        var starting = `The following is a conversation with an AI assistant. The assistant is helpful, clever, very friendly, and for ${level}.\n\nHuman: Hello, who are you?\nAI: I am an AI created by OpenAI. How can I help you today?\nHuman: `
+        var text = request.body.prompt;
         
         (async () => {
         const url = 'https://api.openai.com/v1/completions';
@@ -66,11 +56,7 @@ exports.chatAi = functions.https.onRequest(async (request, response) => {
             response.send(err);
         }
         })();
-
-
-
       });
-    
 });
 
 
@@ -81,25 +67,20 @@ exports.explain = functions.https.onRequest(async (request, response) => {
         console.log(request.body)
         console.log(request.body.prompt)
         var index=request.body.index
-        var level=""
-        if (index==0){
-            level="a child"
+        var level = ""
+        if (index == 0){
+            level = "a child"
         }
-        if (index==1){
-            level="a young adult"
+        if (index == 1){
+            level = "a young adult"
         }
-        if (index==2){
-            level="a high-schooler"
+        if (index == 2){
+            level = "a high-schooler"
         }
-        if (index==2){
-            level="an adult"
+        if (index == 2){
+            level = "an adult"
         }
-        var text="Answer this question in 2 paragraphs format for "+ level + ":\n\n"+request.body.prompt;
-        
-        
-
-        // This is just an example, but could be something you keep track of
-        // in your application to provide OpenAI as prompt text.
+        var text = "Answer this question in 2 paragraphs format for "+ level + ":\n\n"+request.body.prompt;
         
         (async () => {
             const url = 'https://api.openai.com/v1/completions';
@@ -129,48 +110,59 @@ exports.explain = functions.https.onRequest(async (request, response) => {
             }
             })();
         });
-
-
 });
-
-
 
 exports.getEntities = functions.https.onRequest(async (request, response) => {
     cors(request, response, async() => {
-    var text = request.body.prompt;
-    console.log(`TEXT: ${text}`)
-    
-    // Creates a client
-    const client = new language.LanguageServiceClient(
-        {
-            projectID:"ai-hacks-gatormate",
-            keyFilename:"creds.json"
-        }
-    );
+        var text = request.body.prompt;
+        
+        const client = new language.LanguageServiceClient(
+            {
+                projectID:"ai-hacks-gatormate",
+                keyFilename:"creds.json"
+            }
+        );
 
-    const document = {
-        content: text,
-        type: 'PLAIN_TEXT'
-    };
-    // console.log(`DOCUMENT: ${document}`);
+        const document = {
+            content: text,
+            type: 'PLAIN_TEXT'
+        };
+        
+        const [result] = await client.analyzeEntities({document});
+        const wikis = [];
 
-    // Detects the sentiment of the document
-    const [result] = await client.analyzeEntities({document});
-    const wikis = [];
-
-    const entities = result.entities;
-    console.log('Entities:');
-    entities.forEach(entity => {
-        console.log(entity.name);
-        console.log(` - Type: ${entity.name}, Salience: ${entity.salience}`);
-        if(entity.metadata && entity.metadata.wikipedia_url) {
-            // console.log(` - Wikipedia URL: &{entity.metadata.wikipedia_url}`);
-            wikis.push(entity.metadata.wikipedia_url);
-        }
-    });
-    // wikis.forEach(wiki => {
-    //     console.log(`Wiki URL: ${wiki}`)
-    // })
-    response.send(entities);
+        const entities = result.entities;
+        entities.forEach(entity => {
+            if(entity.metadata && entity.metadata.wikipedia_url) {
+                wikis.push(entity.metadata.wikipedia_url);
+            }
+        });
+        entities.sort((a,b) => {
+            if(a.salience > b.salience)
+                return a;
+            else   
+                return b;
+        });
+        response.send({input: request.body.prompt, output: entities});
+        console.log(`Entities: ${entities}`);
     });
 });
+
+exports.getNews = functions.https.onRequest(async (request, response) => {
+    cors(request, response, async() => {
+        const NewsAPI = require('newsapi');
+        const newsapi = new NewsAPI('2ebba9cd2f3f46568c1d31dcdaffbfad');
+    
+        var text = request.body.prompt;
+        var lang = request.body.language;
+
+        newsapi.v2.everything({
+            q: text,
+            language: lang,
+            pageSize: 5,
+            sortBy: 'relevancy'
+        }).then(data => {
+            response.send({input: request.body.prompt, output: data});
+        });
+    });
+})
