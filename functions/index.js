@@ -149,12 +149,16 @@ exports.getEntities = functions.https.onRequest(async (request, response) => {
 });
 
 exports.getNews = functions.https.onRequest(async (request, response) => {
-    cors(request, response, async() => {
+   cors(request, response, async() => {
         const NewsAPI = require('newsapi');
         const newsapi = new NewsAPI('2ebba9cd2f3f46568c1d31dcdaffbfad');
     
         var text = request.body.prompt;
         var lang = request.body.language;
+
+        response.set('Access-Control-Allow-Origin', '*');
+        response.set('Access-Control-Allow-Headers', '*');
+        response.set('Content-Type', 'application/json');
 
         newsapi.v2.everything({
             q: text,
@@ -164,5 +168,24 @@ exports.getNews = functions.https.onRequest(async (request, response) => {
         }).then(data => {
             response.send({input: request.body.prompt, output: data});
         });
-    });
-})
+   });
+});
+
+exports.getResearch = functions.https.onRequest(async (request, response) => {
+    cors(request, response, async() => {
+        const arxiv = require('arxiv-api');
+
+        var keyword = request.body.prompt;
+
+        const papers = await arxiv.search({
+            searchQueryParams: [
+                {
+                    include: [{name: `${keyword}`}],
+                }
+            ],
+            start: 0,
+            maxResults: 5,
+        });
+        response.send({input: request.body.prompt, output: papers});
+    })
+});
