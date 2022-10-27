@@ -14,7 +14,9 @@ export interface ContinueButton {
 const Button = (setStep: {}) => {
   return (
     <button
-      onClick={() => setStep(1)}
+      onClick={() => {
+        //do nothing
+      }}
       className="bg-macaw w-full hover:bg-humpback transition duration-300 text-white font-bold font-din text-xl rounded-lg py-3 px-5"
     >
       Continue
