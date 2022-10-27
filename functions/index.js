@@ -10,7 +10,12 @@ dotenv.config();
 
 exports.chatAi = functions.https.onRequest(async (request, response) => {
     cors(request, response, async() => {
-       
+        var language=request.body.language
+
+        
+
+        
+        
         console.log(request.body)
         console.log(request.body.prompt)
         var index=request.body.index
@@ -24,15 +29,18 @@ exports.chatAi = functions.https.onRequest(async (request, response) => {
         if (index==2){
             level="a high-schooler"
         }
-        if (index==2){
+        if (index==3){
             level="an adult"
         }
 
 
-        var starting=`The following is a conversation with an AI assistant. The assistant is helpful, clever, very friendly, and for ${level}.\n\nHuman: Hello, who are you?\nAI: I am an AI created by OpenAI. How can I help you today?\nHuman: `
+        var starting=`The following is a conversation with an AI assistant. The assistant is helpful, clever, very friendly, and for ${level}.\n\n Human: Hello, who are you?\n AI: I am an AI created by OpenAI. How can I help you today?\n Human: `
         var text=request.body.prompt;
+        var inputToAi=starting+text
         
-        
+        if (language != "English" && language != "english"){
+            inputToAi= "Translate answer into "+language+"."+inputToAi
+        }
 
 
         // This is just an example, but could be something you keep track of
@@ -42,13 +50,13 @@ exports.chatAi = functions.https.onRequest(async (request, response) => {
         const url = 'https://api.openai.com/v1/completions';
         const params = {
             "model": "text-davinci-002",
-            'prompt': starting+text,
-            'max_tokens': 150,
+            'prompt': inputToAi,
+            'max_tokens': 400,
             'temperature': 0.9,
             'frequency_penalty': 0,
             'presence_penalty': 0.6,
             'top_p': 1,
-            'stop': [" Human:", " AI:"]
+            'stop': [" Human:"," AI:"]
         };
         
         const headers = {
@@ -61,7 +69,7 @@ exports.chatAi = functions.https.onRequest(async (request, response) => {
         try {
             const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
             output = responseFromGPT.choices[0].text;
-            response.send(output)
+            response.send({input: request.body.prompt, output: output})
         } catch (err) {
             response.send(err);
         }
@@ -80,30 +88,38 @@ exports.explain = functions.https.onRequest(async (request, response) => {
     
         console.log(request.body)
         console.log(request.body.prompt)
+        var language=request.body.language
         var index=request.body.index
         var level=""
         if (index==0){
-            level="a child"
+            level="a toddler"
         }
         if (index==1){
+            level="a teenager"
+        }
+        if (index==2){
             level="a young adult"
         }
-        if (index==2){
-            level="a high-schooler"
-        }
-        if (index==2){
+        if (index==3){
             level="an adult"
         }
-        var text="Answer this question in 2 paragraphs format for "+ level + ":\n\n"+request.body.prompt;
+        var text="Answer this question in two paragraph format for "+ level + ":\n "+request.body.prompt;
         
         
+
+
+        if (language != "English" && language != "english"){
+            text="Translate this answer into "+language+"."+text
+        }
+
+        console.log("here"+text)
 
         // This is just an example, but could be something you keep track of
         // in your application to provide OpenAI as prompt text.
         
-        (async () => {
-            const url = 'https://api.openai.com/v1/completions';
-            const params = {
+        
+        const url = 'https://api.openai.com/v1/completions';
+        const params = {
                 "model": "text-davinci-002",
                 'prompt': text,
                 'max_tokens': 1500,
@@ -111,23 +127,24 @@ exports.explain = functions.https.onRequest(async (request, response) => {
                 'frequency_penalty': 0,
                 'presence_penalty': 0,
                 'top_p': 1
-            };
+        };
             
-            const headers = {
+        const headers = {
                 'Authorization': `Bearer ${process.env.KEY}`,
-            };
+        };
 
-            response.set('Access-Control-Allow-Origin', '*');
-            response.set('Access-Control-Allow-Headers', '*');
-            response.set('Content-Type', 'application/json');
-            try {
-                const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
-                output = responseFromGPT.choices[0].text;
-                response.send(request.body.prompt+output)
-            } catch (err) {
-                response.send(err);
+        response.set('Access-Control-Allow-Origin', '*');
+        response.set('Access-Control-Allow-Headers', '*');
+        response.set('Content-Type', 'application/json');
+        try {
+            const responseFromGPT = await got.post(url, { json: params, headers: headers }).json();
+            output = responseFromGPT.choices[0].text;
+            //console.log(output)
+            response.send({input: request.body.prompt, output: output})
+        } catch (err) {
+            response.send(err);
             }
-            })();
+           
         });
 
 
@@ -137,40 +154,116 @@ exports.explain = functions.https.onRequest(async (request, response) => {
 
 exports.getEntities = functions.https.onRequest(async (request, response) => {
     cors(request, response, async() => {
-    var text = request.body.prompt;
-    console.log(`TEXT: ${text}`)
+        var text = request.body.prompt;
+        
+        const client = new language.LanguageServiceClient(
+            {
+                projectID:"ai-hacks-gatormate",
+                keyFilename:"creds.json"
+            }
+        );
+
+        const document = {
+            content: text,
+            type: 'PLAIN_TEXT'
+        };
+        
+        const [result] = await client.analyzeEntities({document});
+        const wikis = [];
+
+        const entities = result.entities;
+        entities.forEach(entity => {
+            if(entity.metadata && entity.metadata.wikipedia_url) {
+                wikis.push(entity.metadata.wikipedia_url);
+            }
+        });
+        entities.sort((a,b) => {
+            if(a.salience > b.salience)
+                return a;
+            else   
+                return b;
+        });
+        response.send({input: request.body.prompt, output: entities});
+        console.log(`Entities: ${entities}`);
+    });
+});
+
+
+exports.searchYoutube = functions.https.onRequest(async (request, response) => {
+    cors(request, response, async() => {
+       
+        console.log(request.body)
+        console.log(request.body.prompt)
+       
+ 
+
+
+        // search youtube
+        
+        const url = 'https://www.googleapis.com/youtube/v3/search?key=AIzaSyAp3J6Z6CRjVu52hK_c-WZwZ7OaALA-5jQ&safeSearch=strict&type=video&videoEmbeddable=true&q='+request.body.prompt;
+       
+        try {
+            const responseFromYoutube = await got.get(url).json();
+            let responses=[]
+            for (const dat of responseFromYoutube.items){
+                const cal="https://www.googleapis.com/youtube/v3/videos?part=snippet&id="+dat.id.videoId+"&key=AIzaSyAp3J6Z6CRjVu52hK_c-WZwZ7OaALA-5jQ"
+                var obj=await got.get(cal).json()
+                console.log(obj)
+                obj["video_url"]="https://www.youtube.com/watch?v="+dat.id.videoId;
+                responses.push(obj)
+            }
+
+            
+            response.send({input: request.body.prompt, output: responses})
+        } catch (err) {
+            response.send(err);
+        }
+       
+
+
+
+      });
     
-    // Creates a client
-    const client = new language.LanguageServiceClient(
-        {
-            projectID:"ai-hacks-gatormate",
-            keyFilename:"creds.json"
-        }
-    );
+});
 
-    const document = {
-        content: text,
-        type: 'PLAIN_TEXT'
-    };
-    // console.log(`DOCUMENT: ${document}`);
 
-    // Detects the sentiment of the document
-    const [result] = await client.analyzeEntities({document});
-    const wikis = [];
 
-    const entities = result.entities;
-    console.log('Entities:');
-    entities.forEach(entity => {
-        console.log(entity.name);
-        console.log(` - Type: ${entity.name}, Salience: ${entity.salience}`);
-        if(entity.metadata && entity.metadata.wikipedia_url) {
-            // console.log(` - Wikipedia URL: &{entity.metadata.wikipedia_url}`);
-            wikis.push(entity.metadata.wikipedia_url);
-        }
+
+
+exports.getNews = functions.https.onRequest(async (request, response) => {
+    cors(request, response, async() => {
+        const NewsAPI = require('newsapi');
+        const newsapi = new NewsAPI('cdd814705fa840f887697f712d85ca4f');
+    
+        var text = request.body.prompt;
+        var lang = request.body.language;
+
+        newsapi.v2.everything({
+            q: text,
+            language: lang,
+            pageSize: 5,
+            sortBy: 'relevancy'
+        }).then(data => {
+            response.send({input: request.body.prompt, output: data});
+        });
     });
-    // wikis.forEach(wiki => {
-    //     console.log(`Wiki URL: ${wiki}`)
-    // })
-    response.send(entities);
-    });
+})
+
+exports.getResearch = functions.https.onRequest(async (request, response) => {
+    cors(request, response, async() => {
+        const arxiv = require('arxiv-api');
+
+        var keyword = request.body.prompt;
+
+        const papers = await arxiv.search({
+            searchQueryParams: [
+                {
+                    include: [{name: `${keyword}`}],
+                }
+            ],
+            start: 0,
+            maxResults: 5,
+        });
+        response.send({input: request.body.prompt, output: papers});
+    })
 });
