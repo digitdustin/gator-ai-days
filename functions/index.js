@@ -109,7 +109,9 @@ exports.explain = functions.https.onRequest(async (request, response) => {
 
 
 
-exports.quickstart = functions.https.onRequest(async (request, response) => {
+exports.getEntities = functions.https.onRequest(async (request, response) => {
+    var text = request.body.prompt;
+    console.log(`TEXT: ${text}`)
     
     // Creates a client
     const client = new language.LanguageServiceClient(
@@ -119,29 +121,28 @@ exports.quickstart = functions.https.onRequest(async (request, response) => {
         }
     );
 
-    /**
-     * TODO(developer): Uncomment the following line to run this code.
-     */
-    const text = 'Your text to analyze, e.g. Hello, world!';
-
-    // Prepares a document, representing the provided text
     const document = {
         content: text,
-        type: 'PLAIN_TEXT',
+        type: 'PLAIN_TEXT'
     };
+    // console.log(`DOCUMENT: ${document}`);
 
     // Detects the sentiment of the document
-    const [result] = await client.analyzeSentiment({document});
+    const [result] = await client.analyzeEntities({document});
+    const wikis = [];
 
-    const sentiment = result.documentSentiment;
-    console.log('Document sentiment:');
-    console.log(`  Score: ${sentiment.score}`);
-    console.log(`  Magnitude: ${sentiment.magnitude}`);
-
-    const sentences = result.sentences;
-    sentences.forEach(sentence => {
-    console.log(`Sentence: ${sentence.text.content}`);
-    console.log(`  Score: ${sentence.sentiment.score}`);
-    console.log(`  Magnitude: ${sentence.sentiment.magnitude}`);
+    const entities = result.entities;
+    console.log('Entities:');
+    entities.forEach(entity => {
+        console.log(entity.name);
+        console.log(` - Type: ${entity.name}, Salience: ${entity.salience}`);
+        if(entity.metadata && entity.metadata.wikipedia_url) {
+            // console.log(` - Wikipedia URL: &{entity.metadata.wikipedia_url}`);
+            wikis.push(entity.metadata.wikipedia_url);
+        }
     });
+    // wikis.forEach(wiki => {
+    //     console.log(`Wiki URL: ${wiki}`)
+    // })
+    response.send(entities);
 });
